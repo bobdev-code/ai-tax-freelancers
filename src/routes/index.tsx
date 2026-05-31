@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import heroImg from "@/assets/hero.jpg";
 import {
   Receipt, Brain, ShieldCheck, Sparkles, Upload, Wand2, FileCheck2,
@@ -28,7 +28,7 @@ function Nav() {
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
           <a href="#how" className="hover:text-foreground transition">How it works</a>
           <a href="#features" className="hover:text-foreground transition">Features</a>
-          <a href="#dashboard" className="hover:text-foreground transition">Dashboard</a>
+          <Link to="/dashboard" className="hover:text-foreground transition">Dashboard</Link>
           <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
         </nav>
         <div className="flex items-center gap-3">
