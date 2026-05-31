@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import heroImg from "@/assets/hero.jpg";
 import {
   Receipt, Brain, ShieldCheck, Sparkles, Upload, Wand2, FileCheck2,
@@ -28,7 +28,7 @@ function Nav() {
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
           <a href="#how" className="hover:text-foreground transition">How it works</a>
           <a href="#features" className="hover:text-foreground transition">Features</a>
-          <a href="#dashboard" className="hover:text-foreground transition">Dashboard</a>
+          <Link to="/dashboard" className="hover:text-foreground transition">Dashboard</Link>
           <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
         </nav>
         <div className="flex items-center gap-3">
@@ -61,9 +61,9 @@ function Hero() {
             <button className="rounded-lg bg-mint text-primary-foreground px-5 py-3 text-sm font-semibold inline-flex items-center gap-2 shadow-glow">
               Start free trial <ArrowRight className="size-4" />
             </button>
-            <button className="rounded-lg border border-border bg-card/50 px-5 py-3 text-sm font-medium hover:bg-card transition">
-              Watch demo
-            </button>
+            <Link to="/dashboard" className="rounded-lg border border-border bg-card/50 px-5 py-3 text-sm font-medium hover:bg-card transition inline-flex items-center gap-2">
+              Try the dashboard <ArrowRight className="size-4" />
+            </Link>
           </div>
           <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
             <Stat k="81%" v="feel taxes are confusing" />
