@@ -61,9 +61,9 @@ function Hero() {
             <button className="rounded-lg bg-mint text-primary-foreground px-5 py-3 text-sm font-semibold inline-flex items-center gap-2 shadow-glow">
               Start free trial <ArrowRight className="size-4" />
             </button>
-            <button className="rounded-lg border border-border bg-card/50 px-5 py-3 text-sm font-medium hover:bg-card transition">
-              Watch demo
-            </button>
+            <Link to="/dashboard" className="rounded-lg border border-border bg-card/50 px-5 py-3 text-sm font-medium hover:bg-card transition inline-flex items-center gap-2">
+              Try the dashboard <ArrowRight className="size-4" />
+            </Link>
           </div>
           <div className="mt-10 grid grid-cols-3 gap-6 max-w-md">
             <Stat k="81%" v="feel taxes are confusing" />
