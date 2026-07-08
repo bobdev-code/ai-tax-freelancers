@@ -678,27 +678,29 @@ function LevelPill({ level }: { level: ReviewLevel }) {
   return <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${map.cls}`}>{map.l}</span>;
 }
 
-function KPI({ label, value, delta, icon: Icon, highlight }: { label: string; value: string; delta: string; icon: React.ComponentType<{ className?: string }>; highlight?: boolean }) {
-  return (
-    <div className={`rounded-2xl border p-5 ${highlight ? "border-primary/40 bg-mint/5 shadow-glow" : "border-border bg-card"}`}>
+function KPI({ label, value, delta, icon: Icon, highlight, onClick }: { label: string; value: string; delta: string; icon: React.ComponentType<{ className?: string }>; highlight?: boolean; onClick?: () => void }) {
+  const cls = `rounded-2xl border p-5 text-left w-full transition ${highlight ? "border-primary/40 bg-mint/5 shadow-glow" : "border-border bg-card"} ${onClick ? "hover:border-primary/60 cursor-pointer" : ""}`;
+  const inner = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
         <Icon className={`size-4 ${highlight ? "text-primary" : "text-muted-foreground"}`} />
       </div>
       <div className="text-2xl font-display font-bold">{value}</div>
       <div className={`text-xs mt-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{delta}</div>
-    </div>
+    </>
   );
+  return onClick ? <button onClick={onClick} className={cls}>{inner}</button> : <div className={cls}>{inner}</div>;
 }
 
-function SidebarNav() {
-  const items = [
-    { icon: LayoutDashboard, t: "Overview", active: true },
-    { icon: Receipt, t: "Receipts" },
-    { icon: Inbox, t: "Review queue" },
-    { icon: Scale, t: "Rule registry" },
-    { icon: FileCheck2, t: "Export" },
-    { icon: FileText, t: "Docs" },
+function SidebarNav({ view, setView, stats }: { view: View; setView: (v: View) => void; stats: { count: number; classified: number; review: number; missing: number } }) {
+  const items: { icon: React.ComponentType<{ className?: string }>; t: string; k: View; badge?: number }[] = [
+    { icon: LayoutDashboard, t: "Overview", k: "overview" },
+    { icon: Receipt, t: "Receipts", k: "receipts", badge: stats.count },
+    { icon: Inbox, t: "Review queue", k: "review", badge: stats.review + stats.missing },
+    { icon: Scale, t: "Rule registry", k: "rules" },
+    { icon: FileCheck2, t: "Export", k: "export" },
+    { icon: FileText, t: "Docs", k: "docs" },
   ];
   return (
     <aside className="hidden lg:flex flex-col w-60 border-r border-border bg-card/40 p-5">
@@ -709,11 +711,19 @@ function SidebarNav() {
         TaxPilot<span className="text-primary"> AI</span>
       </Link>
       <nav className="space-y-1 text-sm flex-1">
-        {items.map(({ icon: Icon, t, active }) => (
-          <div key={t} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition ${active ? "bg-mint/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"}`}>
-            <Icon className="size-4" /> {t}
-          </div>
-        ))}
+        {items.map(({ icon: Icon, t, k, badge }) => {
+          const active = view === k;
+          return (
+            <button key={k} onClick={() => setView(k)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${active ? "bg-mint/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"}`}>
+              <Icon className="size-4" />
+              <span className="flex-1">{t}</span>
+              {badge !== undefined && badge > 0 && (
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"}`}>{badge}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
       <div className="rounded-xl border border-primary/30 bg-mint/5 p-3 text-xs text-muted-foreground mb-4">
         <ShieldCheck className="size-4 text-primary mb-1.5" />
