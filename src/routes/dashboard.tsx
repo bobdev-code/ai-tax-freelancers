@@ -117,6 +117,8 @@ const initialReceipts: ReceiptRow[] = [
 
 // ---------- component ----------
 
+type View = "overview" | "receipts" | "review" | "rules" | "export" | "docs";
+
 function DashboardPage() {
   const [receipts, setReceipts] = useState<ReceiptRow[]>(initialReceipts);
   const [query, setQuery] = useState("");
@@ -124,6 +126,7 @@ function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>("R-0185");
   const [showIntake, setShowIntake] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [view, setView] = useState<View>("overview");
 
   const filtered = useMemo(() => receipts.filter(r =>
     (statusFilter === "all" || r.status === statusFilter) &&
@@ -141,7 +144,6 @@ function DashboardPage() {
   const selected = receipts.find(r => r.id === selectedId) ?? null;
 
   const addReceipt = (r: Omit<ReceiptRow, "id" | "rules" | "status" | "gaps">) => {
-    // Toy deterministic rule engine — mirrors packages/rules behavior
     const rules: RuleHit[] = [];
     const gaps: string[] = [];
     rules.push({ ruleId: "RULE-DE-001", sourceId: "EStG §4 Abs. 4", level: "auto", explanation: "Business-caused expense — deductible in principle." });
@@ -164,20 +166,30 @@ function DashboardPage() {
     setReceipts(prev => [newRow, ...prev]);
     setSelectedId(id);
     setShowIntake(false);
+    setView("receipts");
   };
+
+  const titles: Record<View, { eyebrow: string; title: string; sub: string }> = {
+    overview: { eyebrow: "Prototype demo", title: "Steuerberater-ready workspace", sub: "Add a receipt · watch the rule engine run · export a JSON package." },
+    receipts: { eyebrow: "Ledger", title: "All receipts", sub: "Every intake, filtered and searchable — each traceable to a rule." },
+    review: { eyebrow: "Human-in-the-loop", title: "Review queue", sub: "Receipts flagged for confirmation or blocked for missing evidence." },
+    rules: { eyebrow: "Deterministic engine", title: "Tax rule registry", sub: "The full @taxpilot/rules registry — every rule ID and its legal source." },
+    export: { eyebrow: "Handoff", title: "Steuerberater export", sub: "Preview the JSON package your accountant receives." },
+    docs: { eyebrow: "Reference", title: "Documentation", sub: "How the deterministic rule engine works and how to read a receipt trace." },
+  };
+  const meta = titles[view];
 
   return (
     <div className="min-h-screen flex bg-background">
-      <SidebarNav />
+      <SidebarNav view={view} setView={setView} stats={stats} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar query={query} setQuery={setQuery} />
         <main className="flex-1 p-6 lg:p-8 space-y-6 overflow-x-hidden">
-          {/* Header */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-widest text-primary mb-1">Prototype demo</div>
-              <h1 className="text-3xl font-bold">Steuerberater-ready workspace</h1>
-              <p className="text-sm text-muted-foreground mt-1">Add a receipt · watch the rule engine run · export a JSON package.</p>
+              <div className="text-xs uppercase tracking-widest text-primary mb-1">{meta.eyebrow}</div>
+              <h1 className="text-3xl font-bold">{meta.title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">{meta.sub}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setShowIntake(true)}
@@ -191,61 +203,32 @@ function DashboardPage() {
             </div>
           </div>
 
-          {/* KPIs */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPI label="Receipts" value={String(stats.count)} delta={`€${stats.total.toFixed(2)} tracked`} icon={Receipt} />
-            <KPI label="Auto-classified" value={String(stats.classified)} delta="rule engine confident" icon={CheckCircle2} highlight />
-            <KPI label="Review queue" value={String(stats.review)} delta="human confirmation" icon={AlertCircle} />
-            <KPI label="Missing info" value={String(stats.missing)} delta="blocking gaps" icon={Info} />
-          </div>
-
-          <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
-            {/* Left: list */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <ClipboardList className="size-4 text-primary" />
-                  <div className="font-semibold text-sm">Receipts</div>
-                  <span className="text-xs text-muted-foreground">· {filtered.length}/{receipts.length}</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {(["all", "classified", "review", "missing_info"] as const).map(s => (
-                    <button key={s} onClick={() => setStatusFilter(s)}
-                            className={`text-xs px-2.5 py-1 rounded-md border transition ${statusFilter === s ? "border-primary bg-mint/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                      {s === "all" ? "All" : s === "classified" ? "Classified" : s === "review" ? "Review" : "Missing info"}
-                    </button>
-                  ))}
-                </div>
+          {view === "overview" && (
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPI label="Receipts" value={String(stats.count)} delta={`€${stats.total.toFixed(2)} tracked`} icon={Receipt} onClick={() => setView("receipts")} />
+                <KPI label="Auto-classified" value={String(stats.classified)} delta="rule engine confident" icon={CheckCircle2} highlight onClick={() => { setStatusFilter("classified"); setView("receipts"); }} />
+                <KPI label="Review queue" value={String(stats.review)} delta="human confirmation" icon={AlertCircle} onClick={() => setView("review")} />
+                <KPI label="Missing info" value={String(stats.missing)} delta="blocking gaps" icon={Info} onClick={() => { setStatusFilter("missing_info"); setView("receipts"); }} />
               </div>
-              <div className="divide-y divide-border max-h-[32rem] overflow-y-auto">
-                {filtered.length === 0 && (
-                  <div className="p-10 text-center text-sm text-muted-foreground">No receipts match these filters.</div>
-                )}
-                {filtered.map(r => (
-                  <button key={r.id} onClick={() => setSelectedId(r.id)}
-                          className={`w-full text-left px-4 py-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 hover:bg-secondary/40 transition ${selectedId === r.id ? "bg-mint/5" : ""}`}>
-                    <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
-                    <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{r.vendor}</div>
-                      <div className="text-xs text-muted-foreground">{r.date} · {r.category}</div>
-                    </div>
-                    <span className="font-mono tabular-nums text-sm">€{r.amountEur.toFixed(2)}</span>
-                    <StatusBadge status={r.status} />
-                  </button>
-                ))}
-              </div>
-            </div>
+              <ReceiptWorkspace receipts={receipts} filtered={filtered} statusFilter={statusFilter} setStatusFilter={setStatusFilter} selectedId={selectedId} setSelectedId={setSelectedId} selected={selected} />
+              <RuleRegistry />
+            </>
+          )}
 
-            {/* Right: detail */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              {selected ? <ReceiptDetail r={selected} /> : (
-                <div className="p-10 text-center text-sm text-muted-foreground">Select a receipt to see its rule trace.</div>
-              )}
-            </div>
-          </div>
+          {view === "receipts" && (
+            <ReceiptWorkspace receipts={receipts} filtered={filtered} statusFilter={statusFilter} setStatusFilter={setStatusFilter} selectedId={selectedId} setSelectedId={setSelectedId} selected={selected} />
+          )}
 
-          {/* Rule Registry */}
-          <RuleRegistry />
+          {view === "review" && (
+            <ReviewQueueView receipts={receipts} onOpen={(id) => { setSelectedId(id); setView("receipts"); }} />
+          )}
+
+          {view === "rules" && <RuleRegistry />}
+
+          {view === "export" && <ExportView receipts={receipts} onOpenModal={() => setShowExport(true)} />}
+
+          {view === "docs" && <DocsView />}
 
           <BackLink />
         </main>
@@ -253,6 +236,179 @@ function DashboardPage() {
 
       {showIntake && <IntakeModal onClose={() => setShowIntake(false)} onSubmit={addReceipt} />}
       {showExport && <ExportModal receipts={receipts} onClose={() => setShowExport(false)} />}
+    </div>
+  );
+}
+
+// ---------- receipt workspace ----------
+
+function ReceiptWorkspace({ receipts, filtered, statusFilter, setStatusFilter, selectedId, setSelectedId, selected }: {
+  receipts: ReceiptRow[]; filtered: ReceiptRow[]; statusFilter: "all" | ReceiptRow["status"];
+  setStatusFilter: (s: "all" | ReceiptRow["status"]) => void; selectedId: string | null;
+  setSelectedId: (id: string) => void; selected: ReceiptRow | null;
+}) {
+  return (
+    <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="size-4 text-primary" />
+            <div className="font-semibold text-sm">Receipts</div>
+            <span className="text-xs text-muted-foreground">· {filtered.length}/{receipts.length}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {(["all", "classified", "review", "missing_info"] as const).map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                      className={`text-xs px-2.5 py-1 rounded-md border transition ${statusFilter === s ? "border-primary bg-mint/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
+                {s === "all" ? "All" : s === "classified" ? "Classified" : s === "review" ? "Review" : "Missing info"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="divide-y divide-border max-h-[32rem] overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="p-10 text-center text-sm text-muted-foreground">No receipts match these filters.</div>
+          )}
+          {filtered.map(r => (
+            <button key={r.id} onClick={() => setSelectedId(r.id)}
+                    className={`w-full text-left px-4 py-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 hover:bg-secondary/40 transition ${selectedId === r.id ? "bg-mint/5" : ""}`}>
+              <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+              <div className="min-w-0">
+                <div className="font-medium text-sm truncate">{r.vendor}</div>
+                <div className="text-xs text-muted-foreground">{r.date} · {r.category}</div>
+              </div>
+              <span className="font-mono tabular-nums text-sm">€{r.amountEur.toFixed(2)}</span>
+              <StatusBadge status={r.status} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        {selected ? <ReceiptDetail r={selected} /> : (
+          <div className="p-10 text-center text-sm text-muted-foreground">Select a receipt to see its rule trace.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- review queue view ----------
+
+function ReviewQueueView({ receipts, onOpen }: { receipts: ReceiptRow[]; onOpen: (id: string) => void }) {
+  const queue = receipts.filter(r => r.status !== "classified");
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="p-4 border-b border-border flex items-center gap-2">
+        <Inbox className="size-4 text-primary" />
+        <div className="font-semibold text-sm">Awaiting human confirmation</div>
+        <span className="text-xs text-muted-foreground">· {queue.length} items</span>
+      </div>
+      {queue.length === 0 ? (
+        <div className="p-10 text-center text-sm text-muted-foreground">Queue is empty. Everything auto-classified.</div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {queue.map(r => {
+            const worst = r.rules.find(h => h.level === "block") ?? r.rules.find(h => h.level === "review");
+            return (
+              <li key={r.id}>
+                <button onClick={() => onOpen(r.id)} className="w-full text-left p-5 hover:bg-secondary/40 transition">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-mono text-xs text-muted-foreground">{r.id}</span>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{r.vendor}</div>
+                        <div className="text-xs text-muted-foreground">{r.date} · {r.category} · €{r.amountEur.toFixed(2)}</div>
+                      </div>
+                    </div>
+                    <StatusBadge status={r.status} />
+                  </div>
+                  {worst && (
+                    <div className="mt-3 rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-secondary">{worst.ruleId}</span>
+                        <LevelPill level={worst.level} />
+                        <span className="text-xs text-muted-foreground font-mono">{worst.sourceId}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{worst.explanation}</div>
+                    </div>
+                  )}
+                  {r.gaps.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {r.gaps.map(g => (
+                        <span key={g} className="text-[10px] px-2 py-0.5 rounded border border-accent/40 bg-accent/10 text-accent">{g}</span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------- export view ----------
+
+function ExportView({ receipts, onOpenModal }: { receipts: ReceiptRow[]; onOpenModal: () => void }) {
+  const summary = {
+    total: receipts.length,
+    classified: receipts.filter(r => r.status === "classified").length,
+    review: receipts.filter(r => r.status === "review").length,
+    missing: receipts.filter(r => r.status === "missing_info").length,
+    gross: receipts.reduce((s, r) => s + r.amountEur, 0),
+  };
+  return (
+    <div className="space-y-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="Period" value="2025-Q3" delta="Germany · EUR" icon={FileCheck2} />
+        <KPI label="Receipts" value={String(summary.total)} delta={`€${summary.gross.toFixed(2)} gross`} icon={Receipt} />
+        <KPI label="Ready" value={String(summary.classified)} delta="auto-classified" icon={CheckCircle2} highlight />
+        <KPI label="Needs review" value={String(summary.review + summary.missing)} delta="before handoff" icon={AlertCircle} />
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center gap-2 mb-2">
+          <FileCheck2 className="size-4 text-primary" />
+          <h2 className="font-semibold">Package contents</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">Each receipt is exported with its rule hits, evidence flags, and legal source IDs. The Steuerberater can audit every line.</p>
+        <ul className="text-sm space-y-2 mb-6">
+          <li className="flex gap-2"><CheckCircle2 className="size-4 text-primary shrink-0 mt-0.5" /> Structured JSON, one entry per receipt</li>
+          <li className="flex gap-2"><CheckCircle2 className="size-4 text-primary shrink-0 mt-0.5" /> Rule IDs + legal source references (EStG, UStG)</li>
+          <li className="flex gap-2"><CheckCircle2 className="size-4 text-primary shrink-0 mt-0.5" /> Missing-info gap list per receipt</li>
+          <li className="flex gap-2"><CheckCircle2 className="size-4 text-primary shrink-0 mt-0.5" /> Period summary with net / VAT totals</li>
+          <li className="flex gap-2"><ShieldCheck className="size-4 text-primary shrink-0 mt-0.5" /> Disclaimer: decision-support only</li>
+        </ul>
+        <button onClick={onOpenModal} className="rounded-lg bg-mint text-primary-foreground px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 shadow-glow">
+          <Download className="size-4" /> Preview JSON package
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- docs view ----------
+
+function DocsView() {
+  const sections = [
+    { t: "How the rule engine works", d: "Every receipt is passed through @taxpilot/rules — a pure, deterministic function that returns a set of rule hits. No ML model is involved. Same input, same output, every time." },
+    { t: "Review levels", d: "auto — engine is confident, no action required. review — a rule matched but needs human judgement. block — evidence is missing and the receipt cannot be finalized until closed." },
+    { t: "Legal sources", d: "Every rule references a paragraph in EStG (Einkommensteuergesetz) or UStG (Umsatzsteuergesetz). The source ID appears on every rule hit for full traceability." },
+    { t: "Steuerberater handoff", d: "The export bundles every receipt with its rule hits, evidence flags, and gap list into a JSON file. The accountant imports it, reviews flagged items, and makes the final call." },
+    { t: "Not a tax advisor", d: "TaxPilot AI is a documentation and preparation tool. It does not provide legally binding tax advice. The Steuerberater always makes the final decision." },
+    { t: "Adding a receipt", d: "Use the Add receipt button. Set vendor, amount, VAT rate and evidence flags — the deterministic engine runs on submit and routes the receipt to the correct queue." },
+  ];
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      {sections.map(s => (
+        <div key={s.t} className="rounded-2xl border border-border bg-card p-6">
+          <FileText className="size-5 text-primary mb-3" />
+          <h3 className="font-semibold mb-2">{s.t}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{s.d}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -522,27 +678,29 @@ function LevelPill({ level }: { level: ReviewLevel }) {
   return <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${map.cls}`}>{map.l}</span>;
 }
 
-function KPI({ label, value, delta, icon: Icon, highlight }: { label: string; value: string; delta: string; icon: React.ComponentType<{ className?: string }>; highlight?: boolean }) {
-  return (
-    <div className={`rounded-2xl border p-5 ${highlight ? "border-primary/40 bg-mint/5 shadow-glow" : "border-border bg-card"}`}>
+function KPI({ label, value, delta, icon: Icon, highlight, onClick }: { label: string; value: string; delta: string; icon: React.ComponentType<{ className?: string }>; highlight?: boolean; onClick?: () => void }) {
+  const cls = `rounded-2xl border p-5 text-left w-full transition ${highlight ? "border-primary/40 bg-mint/5 shadow-glow" : "border-border bg-card"} ${onClick ? "hover:border-primary/60 cursor-pointer" : ""}`;
+  const inner = (
+    <>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
         <Icon className={`size-4 ${highlight ? "text-primary" : "text-muted-foreground"}`} />
       </div>
       <div className="text-2xl font-display font-bold">{value}</div>
       <div className={`text-xs mt-1 ${highlight ? "text-primary" : "text-muted-foreground"}`}>{delta}</div>
-    </div>
+    </>
   );
+  return onClick ? <button onClick={onClick} className={cls}>{inner}</button> : <div className={cls}>{inner}</div>;
 }
 
-function SidebarNav() {
-  const items = [
-    { icon: LayoutDashboard, t: "Overview", active: true },
-    { icon: Receipt, t: "Receipts" },
-    { icon: Inbox, t: "Review queue" },
-    { icon: Scale, t: "Rule registry" },
-    { icon: FileCheck2, t: "Export" },
-    { icon: FileText, t: "Docs" },
+function SidebarNav({ view, setView, stats }: { view: View; setView: (v: View) => void; stats: { count: number; classified: number; review: number; missing: number } }) {
+  const items: { icon: React.ComponentType<{ className?: string }>; t: string; k: View; badge?: number }[] = [
+    { icon: LayoutDashboard, t: "Overview", k: "overview" },
+    { icon: Receipt, t: "Receipts", k: "receipts", badge: stats.count },
+    { icon: Inbox, t: "Review queue", k: "review", badge: stats.review + stats.missing },
+    { icon: Scale, t: "Rule registry", k: "rules" },
+    { icon: FileCheck2, t: "Export", k: "export" },
+    { icon: FileText, t: "Docs", k: "docs" },
   ];
   return (
     <aside className="hidden lg:flex flex-col w-60 border-r border-border bg-card/40 p-5">
@@ -553,11 +711,19 @@ function SidebarNav() {
         TaxPilot<span className="text-primary"> AI</span>
       </Link>
       <nav className="space-y-1 text-sm flex-1">
-        {items.map(({ icon: Icon, t, active }) => (
-          <div key={t} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition ${active ? "bg-mint/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"}`}>
-            <Icon className="size-4" /> {t}
-          </div>
-        ))}
+        {items.map(({ icon: Icon, t, k, badge }) => {
+          const active = view === k;
+          return (
+            <button key={k} onClick={() => setView(k)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition text-left ${active ? "bg-mint/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"}`}>
+              <Icon className="size-4" />
+              <span className="flex-1">{t}</span>
+              {badge !== undefined && badge > 0 && (
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${active ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"}`}>{badge}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
       <div className="rounded-xl border border-primary/30 bg-mint/5 p-3 text-xs text-muted-foreground mb-4">
         <ShieldCheck className="size-4 text-primary mb-1.5" />
