@@ -43,8 +43,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ledgr — AI Tax Assistant for Freelancers" },
-      { name: "description", content: "Automate receipts, maximize deductions, file with confidence. The AI tax co-pilot built for independent workers." },
+      { title: "TaxPilot AI — The intelligent OS for German freelancers" },
+      { name: "description", content: "A workflow & decision-support tool for freelance tax preparation in Germany. Deterministic rules, explainable flags, accountant-ready exports. Not a certified tax advisor." },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
